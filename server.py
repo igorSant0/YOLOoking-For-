@@ -2,16 +2,18 @@ from dotenv import load_dotenv
 from flask import Flask
 import os
 
-load_dotenv()
+from routes.web.web_controller import web_bp
+from routes.esp.esp_controller import esp_bp
 
+load_dotenv()
 app = Flask(__name__)
 
-@app.route('/')
-def hello_world():
-    return 'Hello, World!'
-
-HOST = os.getenv('HOST')
-PORT = os.getenv('PORT')
+app.register_blueprint(web_bp)
+app.register_blueprint(esp_bp)
 
 if __name__ == '__main__':
-    app.run(host=HOST, port=PORT, debug=True)
+    HOST = os.getenv('HOST', '0.0.0.0')
+    PORT = int(os.getenv('PORT', 5001))
+    
+    print(f"[BOOT] YOLOuking For Server escutando em http://{HOST}:{PORT}", flush=True)
+    app.run(host=HOST, port=PORT, debug=True, use_reloader=False)

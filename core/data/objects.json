@@ -1,0 +1,30 @@
+{
+  "bottle": {
+    "display_name": "Garrafa",
+    "hints": ["Para beber", "Tem tampa", "Mata a sede", "Tubo de plastico"]
+  },
+  "cup": {
+    "display_name": "Copo",
+    "hints": ["Bebe cafe", "Sem tampa", "Vidro ou barro", "Tem uma asa"]
+  },
+  "mouse": {
+    "display_name": "Mouse",
+    "hints": ["Move a seta", "Tem 2 botoes", "Desliza na mesa", "Roda no meio"]
+  },
+  "keyboard": {
+    "display_name": "Teclado",
+    "hints": ["Escreve textos", "Tem letras", "Enter e Espaco", "Muitos botoes"]
+  },
+  "cell phone": {
+    "display_name": "Celular",
+    "hints": ["Faz ligacoes", "Tela touch", "Usa internet", "Manda mensagem"]
+  },
+  "book": {
+    "display_name": "Livro",
+    "hints": ["Tem paginas", "Capa de papel", "Voce le", "Guarda historias"]
+  },
+  "tv": {
+    "display_name": "Monitor",
+    "hints": ["Emite luz", "Mostra o video", "Tela grande", "Fica na mesa"]
+  }
+}
