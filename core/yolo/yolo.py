@@ -1,34 +1,61 @@
 import cv2
+from pathlib import Path
 from ultralytics import YOLO
 
-model = YOLO("yolov8n.pt")
+model_path = Path(__file__).resolve().parent / "bestv26.pt"
+model = YOLO(str(model_path))
 
-allowed_classes = [
-    class_id for class_id, class_name in model.names.items() if class_name != "person"
-]
+CONF_THRESHOLD = 0.35
+IMAGE_SIZE = 960
 
-cap = cv2.VideoCapture(0)
+script_dir = Path(__file__).resolve().parent
+image_dir = script_dir / "images"
 
-if not cap.isOpened():
-    print("Erro: Não foi possível abrir a câmera.")
+if not image_dir.exists():
+    print("Erro: não encontrei a pasta 'images' ao lado de yolo.py.")
+    print(f"Verifique: {image_dir}")
     exit()
 
-print("Câmera ativada! Pressione a tecla 'q' para sair.")
+image_files = sorted(
+    [
+        *image_dir.glob("*.jpg"),
+        *image_dir.glob("*.jpeg"),
+        *image_dir.glob("*.png"),
+        *image_dir.glob("*.bmp"),
+        *image_dir.glob("*.webp"),
+    ]
+)
 
-while True:
-    sucesso, frame = cap.read()
+if not image_files:
+    print(f"Nenhuma imagem encontrada em: {image_dir}")
+    exit()
 
-    if not sucesso:
-        print("Falha ao capturar imagem.")
-        break
+output_dir = image_dir / "annotated"
+output_dir.mkdir(exist_ok=True)
 
-    resultados = model(frame, conf=0.5, classes=allowed_classes)
-    frame_anotado = resultados[0].plot()
+for image_path in image_files:
+    frame = cv2.imread(str(image_path))
 
-    cv2.imshow("Teste do YOLO Treinado", frame_anotado)
+    if frame is None:
+        print(f"Falha ao abrir a imagem: {image_path.name}")
+        continue
 
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+    resultados = model(frame, conf=CONF_THRESHOLD, imgsz=IMAGE_SIZE)
+    resultado = resultados[0]
+    frame_anotado = resultado.plot()
 
-cap.release()
-cv2.destroyAllWindows()
+    if resultado.boxes:
+        nomes_detectados = []
+        for class_id, confidence in zip(
+            resultado.boxes.cls.tolist(), resultado.boxes.conf.tolist()
+        ):
+            class_name = model.names[int(class_id)]
+            nomes_detectados.append(f"{class_name} ({confidence:.2f})")
+
+        print(f"{image_path.name}: {', '.join(nomes_detectados)}")
+    else:
+        print(f"{image_path.name}: nenhuma detecção")
+
+    output_path = output_dir / f"annotated_{image_path.name}"
+    cv2.imwrite(str(output_path), frame_anotado)
+    print(f"Salvo em: {output_path}")
