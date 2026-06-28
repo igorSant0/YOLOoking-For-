@@ -5,3 +5,6 @@ __pycache__/
 .git
 .env
 .vscode
+esp-idf/
+game/
+build/
