@@ -5,6 +5,12 @@ __pycache__/
 .git
 .env
 .vscode
-esp-idf/
-game/
 build/
+managed_components/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+*.bin
+*.elf
+*.map
+*.bin
