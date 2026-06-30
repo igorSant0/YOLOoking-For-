@@ -30,7 +30,7 @@ Isso adiciona as placas ESP32 e as bibliotecas básicas (`WiFi.h`, `HTTPClient.h
   Para controlar LCD em modo paralelo.  
   Instale pelo _Gerenciador de Bibliotecas_ → procure por **LiquidCrystal**.
 
-- **ArduinoJson** _(opcional, mas recomendado)_  
+- **ArduinoJson**  
   Para parsear as respostas JSON do servidor e extrair campos como `"status"` e `"hint"`.  
   Instale pelo _Gerenciador de Bibliotecas_ → procure por **ArduinoJson by Benoit Blanchon**.
 
