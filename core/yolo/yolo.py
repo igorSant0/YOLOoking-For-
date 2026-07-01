@@ -2,7 +2,7 @@ import cv2
 from pathlib import Path
 from ultralytics import YOLO
 
-model_path = Path(__file__).resolve().parent / "bestv26.pt"
+model_path = Path(__file__).resolve().parent / "best_augmented.pt"
 model = YOLO(str(model_path))
 
 CONF_THRESHOLD = 0.35
@@ -10,6 +10,8 @@ IMAGE_SIZE = 960
 
 script_dir = Path(__file__).resolve().parent
 image_dir = script_dir / "images"
+
+print(model.names)
 
 if not image_dir.exists():
     print("Erro: não encontrei a pasta 'images' ao lado de yolo.py.")

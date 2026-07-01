@@ -6,7 +6,7 @@ from core.config.settings import permitted_classes
 
 class YoloDetector:
     def __init__(self):
-        self.model = YOLO("core/yolo/bestv26.pt")
+        self.model = YOLO("core/yolo/yolov8n.pt")
 
         self.allowed_classes = [
             class_id
@@ -19,7 +19,7 @@ class YoloDetector:
             return None
 
         results = self.model(
-            frame, conf=0.5, classes=self.allowed_classes, verbose=False
+            frame, conf=0.2, classes=self.allowed_classes, verbose=False
         )
 
         annotated_frame = results[0].plot()
