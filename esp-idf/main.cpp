@@ -4,12 +4,12 @@
 #include <WiFi.h>
 
 // WiFi
-const char *ssid = "Monteiro";
-const char *password = "Reiki191280";
-const char *serverUrl = "http://192.168.15.15:5001";
+const char *ssid = "TP-LINK_7FBE";
+const char *password = "34637043";
+const char *serverUrl = "http://192.168.0.106:5001";
 
 // Botões
-const int BTN_REGISTRO = 18;
+const int BTN_SCORE = 18;
 const int BTN_VALIDACAO = 19;
 const int BTN_DICA = 5;
 const int BTN_RESET = 4;
@@ -20,16 +20,19 @@ const int LED_VERDE = 25;
 const int LED_VERMELHO = 26;
 const int BUZZER = 27;
 
-// Variáveis para rastrear o estado anterior dos botões (Evita metralhadora de requisições)
-bool lastBtnRegistro = HIGH;
+// Variáveis para rastrear o estado anterior dos botões
+bool lastBtnScore = HIGH;
 bool lastBtnValidacao = HIGH;
 bool lastBtnDica = HIGH;
 bool lastBtnReset = HIGH;
 bool lastBtnInit = HIGH;
 
-// Variáveis de controle do LCD para evitar cintilação
+// Variáveis de controle de interface
 unsigned long tempoUltimaAcao = 0;
+unsigned long tempoExibicao = 2000;
 bool telaLivre = true;
+bool jogoIniciado = false;
+String ultimaDica = "";
 
 // LCD paralelo
 LiquidCrystal lcd(21, 22, 14, 13, 32, 23);
@@ -48,7 +51,7 @@ void setup() {
     digitalWrite(LED_VERDE, LOW);
     digitalWrite(LED_VERMELHO, LOW);
 
-    pinMode(BTN_REGISTRO, INPUT_PULLUP);
+    pinMode(BTN_SCORE, INPUT_PULLUP);
     pinMode(BTN_VALIDACAO, INPUT_PULLUP);
     pinMode(BTN_DICA, INPUT_PULLUP);
     pinMode(BTN_RESET, INPUT_PULLUP);
@@ -65,7 +68,7 @@ void setup() {
     Serial.println("\nWiFi conectado!");
     delay(1000);
 
-    // --- NOVA LÓGICA DE RECONEXÃO COM O SERVIDOR ---
+    // LÓGICA DE RECONEXÃO COM O SERVIDOR
     Serial.println("Buscando o servidor do jogo...");
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -75,17 +78,13 @@ void setup() {
 
     bool jogoConectado = false;
 
-    // O ESP32 fica preso aqui até o Flask responder com HTTP 200
     while (!jogoConectado) {
         jogoConectado = chamarRota("/game/connect");
 
         if (!jogoConectado) {
             Serial.println("Servidor offline. Tentando de novo em 3s...");
-            // A função chamarRota já imprimiu o erro no LCD.
-            // Esperamos 3 segundos para o usuário conseguir ler a falha.
             delay(3000);
 
-            // Volta para a tela de busca para a próxima tentativa
             lcd.clear();
             lcd.setCursor(0, 0);
             lcd.print("Conectando ao");
@@ -94,81 +93,85 @@ void setup() {
         }
     }
 
-    // Se saiu do while, a conexão foi um sucesso!
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Conexao");
     lcd.setCursor(0, 1);
     lcd.print("realizada!");
-    delay(2000);  // Dá 2 segundos para o usuário comemorar
+    delay(2000);
 
     lcd.clear();
     lcd.print("Pronto para uso");
     telaLivre = true;
-    // -----------------------------------------------
+    jogoIniciado = false;
 }
 
 void loop() {
-    // 1. Leitura atual
-    bool currentBtnRegistro = digitalRead(BTN_REGISTRO);
+    bool currentBtnScore = digitalRead(BTN_SCORE);
     bool currentBtnValidacao = digitalRead(BTN_VALIDACAO);
     bool currentBtnDica = digitalRead(BTN_DICA);
     bool currentBtnReset = digitalRead(BTN_RESET);
     bool currentBtnInit = digitalRead(BTN_INIT);
 
-    // 2. Dispara apenas na MUDANÇA de estado (solto -> pressionado)
-    if (lastBtnRegistro == HIGH && currentBtnRegistro == LOW) {
+    if (lastBtnScore == HIGH && currentBtnScore == LOW) {
+        Serial.println("Botão de score pressionado");
+        buscarScore();
+        tempoExibicao = 7000;
         telaLivre = false;
-        Serial.println("Botão de registro pressionado");
-        chamarRota("/game/connect");
-        tempoUltimaAcao = millis();
-    }
-    if (lastBtnValidacao == HIGH && currentBtnValidacao == LOW) {
-        telaLivre = false;
-        Serial.println("Botão de validação pressionado");
-        chamarRota("/game/validate");
-        tempoUltimaAcao = millis();
-    }
-    if (lastBtnDica == HIGH && currentBtnDica == LOW) {
-        telaLivre = false;
-        Serial.println("Botão de dica pressionado");
-        buscarDica();
-        tempoUltimaAcao = millis();
-    }
-    if (lastBtnReset == HIGH && currentBtnReset == LOW) {
-        telaLivre = false;
-        Serial.println("Botão de reset pressionado");
-        chamarRota("/game/reset");
-        tempoUltimaAcao = millis();
-    }
-    if (lastBtnInit == HIGH && currentBtnInit == LOW) {
-        telaLivre = false;
-        Serial.println("Botão de inicialização pressionado");
-        iniciarJogo();
         tempoUltimaAcao = millis();
     }
 
-    // 3. Atualiza os estados
-    lastBtnRegistro = currentBtnRegistro;
+    if (lastBtnValidacao == HIGH && currentBtnValidacao == LOW) {
+        Serial.println("Botão de validação pressionado");
+        chamarRota("/game/validate");
+        tempoExibicao = 3000;
+        telaLivre = false;
+        tempoUltimaAcao = millis();
+    }
+
+    if (lastBtnDica == HIGH && currentBtnDica == LOW) {
+        Serial.println("Botão de dica pressionado");
+        buscarDica();
+    }
+
+    if (lastBtnReset == HIGH && currentBtnReset == LOW) {
+        Serial.println("Botão de reset pressionado");
+        resetarJogo();
+    }
+
+    if (lastBtnInit == HIGH && currentBtnInit == LOW) {
+        Serial.println("Botão de inicialização pressionado");
+        iniciarJogo();
+        telaLivre = true;
+    }
+
+    lastBtnScore = currentBtnScore;
     lastBtnValidacao = currentBtnValidacao;
     lastBtnDica = currentBtnDica;
     lastBtnReset = currentBtnReset;
     lastBtnInit = currentBtnInit;
 
-    // 4. Limpa o display apenas se passou 3 segundos da última ação
-    if (!telaLivre && (millis() - tempoUltimaAcao > 3000)) {
+    if (!telaLivre && (millis() - tempoUltimaAcao > tempoExibicao)) {
         lcd.clear();
-        lcd.print("Pronto para uso");
+        lcd.setCursor(0, 0);
+
+        if (jogoIniciado) {
+            lcd.print("Dica:");
+            lcd.setCursor(0, 1);
+            lcd.print(ultimaDica);
+        } else {
+            lcd.print("Pronto para uso");
+        }
+
         telaLivre = true;
 
         digitalWrite(LED_VERDE, LOW);
         digitalWrite(LED_VERMELHO, LOW);
     }
 
-    delay(50);  // Debounce elétrico
+    delay(50);
 }
 
-// Retorna bool para o loop do setup saber se a requisição deu certo
 bool chamarRota(String rota) {
     if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
@@ -184,27 +187,36 @@ bool chamarRota(String rota) {
 
             if (!error) {
                 const char *status = doc["status"];
-                lcd.clear();
-                lcd.setCursor(0, 0);
-                lcd.print("Status:");
-                lcd.setCursor(0, 1);
-                lcd.print(status);
+
+                if (String(status) == "CORRECT" && doc["hint"].is<const char *>()) {
+                    const char *hint = doc["hint"];
+                    ultimaDica = String(hint);
+                }
+
+                if (rota != "/game/connect") {
+                    lcd.clear();
+                    lcd.setCursor(0, 0);
+                    lcd.print("Status:");
+                    lcd.setCursor(0, 1);
+                    lcd.print(status);
+                }
+
                 Serial.print("Status recebido: ");
                 Serial.println(status);
                 feedbackVisual(status);
             }
             http.end();
-            return true;  // Sucesso na requisição
+            return true;
         } else {
             Serial.println("Erro HTTP: " + String(httpCode));
             lcd.clear();
             lcd.setCursor(0, 0);
             lcd.print("Erro: " + String(httpCode));
             http.end();
-            return false;  // Falha na requisição
+            return false;
         }
     }
-    return false;  // Falha por falta de WiFi
+    return false;
 }
 
 void buscarDica() {
@@ -221,15 +233,73 @@ void buscarDica() {
             DeserializationError error = deserializeJson(doc, payload);
 
             if (!error) {
-                const char *hint = doc["hint"];
+                const char *status = doc["status"];
+
+                if (String(status) == "EXHAUSTED") {
+                    lcd.clear();
+                    lcd.setCursor(0, 0);
+                    lcd.print("Sem mais dicas!");
+
+                    feedbackVisual("EXHAUSTED");
+                    telaLivre = false;
+                    tempoExibicao = 2000;
+                    tempoUltimaAcao = millis();
+                } else {
+                    const char *hint = doc["hint"];
+                    ultimaDica = String(hint);
+
+                    lcd.clear();
+                    lcd.setCursor(0, 0);
+                    lcd.print("Dica:");
+                    lcd.setCursor(0, 1);
+                    lcd.print(ultimaDica);
+
+                    Serial.print("Dica recebida: ");
+                    Serial.println(hint);
+
+                    telaLivre = true;
+                }
+            }
+        } else {
+            lcd.clear();
+            lcd.print("Erro Dica: " + String(httpCode));
+            telaLivre = false;
+            tempoExibicao = 3000;
+            tempoUltimaAcao = millis();
+        }
+        http.end();
+    }
+}
+
+void buscarScore() {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(String(serverUrl) + "/game/score");
+        int httpCode = http.GET();
+
+        if (httpCode == 200) {
+            String payload = http.getString();
+            Serial.println(payload);
+
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, payload);
+
+            if (!error) {
+                int total_score = doc["total_score"];
+                int current_level = doc["current_level"];
+                int hints = doc["hints_requested"];
+
                 lcd.clear();
                 lcd.setCursor(0, 0);
-                lcd.print("Dica:");
+                lcd.print("Lvl:" + String(current_level) + " Pts:" + String(total_score));
                 lcd.setCursor(0, 1);
-                lcd.print(hint);
-                Serial.print("Dica recebida: ");
-                Serial.println(hint);
+                lcd.print("Dicas: " + String(hints));
+
+                Serial.println("Score atualizado no LCD.");
             }
+        } else {
+            lcd.clear();
+            lcd.print("Erro Score: " + String(httpCode));
         }
         http.end();
     }
@@ -252,13 +322,18 @@ void iniciarJogo() {
                 const char *status = doc["status"];
                 const char *hint = doc["hint"];
 
+                jogoIniciado = true;
+                ultimaDica = String(hint);
+
                 lcd.clear();
                 lcd.setCursor(0, 0);
-                lcd.print("Status: ");
-                lcd.print(status);
+                lcd.print("Dica: ");
                 lcd.setCursor(0, 1);
-                lcd.print(hint);
+                lcd.print(ultimaDica);
+
                 Serial.println("Jogo iniciado com sucesso!");
+                Serial.print("Status interno: ");
+                Serial.println(status);
                 Serial.print("Dica inicial: ");
                 Serial.println(hint);
             }
@@ -271,8 +346,46 @@ void iniciarJogo() {
             lcd.print("Erro Init: ");
             lcd.setCursor(0, 1);
             lcd.print(String(httpCode));
+
+            telaLivre = false;
+            tempoExibicao = 2000;
+            tempoUltimaAcao = millis();
         }
         http.end();
+    }
+}
+
+void resetarJogo() {
+    if (WiFi.status() == WL_CONNECTED) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Resetando...");
+
+        HTTPClient http;
+        http.begin(String(serverUrl) + "/game/reset");
+        int httpCode = http.GET();
+
+        if (httpCode == 200) {
+            Serial.println("Comando de reset aceito pelo servidor.");
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Jogo Resetado!");
+            feedbackVisual("RESET");
+        } else {
+            Serial.print("Falha ao resetar servidor. HTTP: ");
+            Serial.println(httpCode);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Erro Reset: ");
+            lcd.setCursor(0, 1);
+            lcd.print(String(httpCode));
+        }
+        http.end();
+
+        delay(1500);
+
+        Serial.println("Reiniciando o sistema...");
+        ESP.restart();
     }
 }
 
@@ -287,6 +400,11 @@ void feedbackVisual(String status) {
         digitalWrite(LED_VERDE, LOW);
         digitalWrite(LED_VERMELHO, HIGH);
         tone(BUZZER, 500, 400);
+    } else if (status == "EXHAUSTED") {
+        Serial.println("Feedback visual: Dicas esgotadas");
+        digitalWrite(LED_VERDE, LOW);
+        digitalWrite(LED_VERMELHO, HIGH);
+        tone(BUZZER, 300, 600);
     } else if (status == "RESET") {
         Serial.println("Feedback visual: Reset");
         digitalWrite(LED_VERDE, LOW);

@@ -11,4 +11,4 @@ with open(PATH_JSON, "r", encoding="utf-8") as arquivo:
 
 permitted_classes = list(game_objects.keys())
 
-CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.15.3:8080/video")
+CAMERA_URL = os.getenv("CAMERA_URL", "http://192.168.0.100:8080/video")

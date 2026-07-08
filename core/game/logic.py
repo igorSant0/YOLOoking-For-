@@ -11,6 +11,15 @@ class GameLogic:
         self.reset_game()
         self.has_connected = True
 
+    def get_score(self):
+        return {
+            "status": "SCORE_INFO",
+            "total_score": self.total_score,
+            "current_level": self.current_level_index + 1,
+            "hints_requested": self.hints_requested,
+            "is_game_active": self.is_game_active,
+        }
+
     def reset_game(self):
         self.current_level_index = 0
         self.hints_requested = 0

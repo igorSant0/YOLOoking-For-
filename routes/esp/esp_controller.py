@@ -11,17 +11,27 @@ esp_bp = Blueprint("esp", __name__)
 @esp_bp.route("/game/connect", methods=["GET"])
 def connect_hardware():
     game.connect_hardware()
-    return jsonify({"status": "OK"}), 200
+    return jsonify({"status": "CONNECTED"}), 200
+
+
+@esp_bp.route("/game/score", methods=["GET"])
+def get_score():
+    score_info = game.get_score()
+    return jsonify(score_info), 200
 
 
 @esp_bp.route("/game/init", methods=["GET"])
 def init_game():
     if not game.has_connected:
-        return jsonify({"status": "BLOCKED"}), 403
+        return jsonify({"status": "BLOCKED"}), 200
 
     game.start_game()
 
     current_object = game.get_current_object()
+
+    if not current_object:
+        return jsonify({"status": "GAME_OVER"}), 200
+
     first_hint = game.request_hint()
 
     return (
@@ -42,12 +52,12 @@ def init_game():
 @esp_bp.route("/game/validate", methods=["GET"])
 def validate_attempt():
     if not game.has_started:
-        return jsonify({"status": "BLOCKED"}), 403
+        return jsonify({"status": "BLOCKED"}), 200
 
     target_object = game.get_current_object()
 
     if not target_object:
-        return jsonify({"status": "GAME_OVER"}), 400
+        return jsonify({"status": "GAME_OVER"}), 200
 
     if game.hints_requested == 0:
         return jsonify({"status": "BLOCKED"}), 200
@@ -91,12 +101,28 @@ def validate_attempt():
     if target_class in seen_objects:
         points = game.calculate_current_score()
         game.advance_object(is_correct=True)
+
+        if not game.get_current_object():
+            return (
+                jsonify(
+                    {
+                        "status": "GAME_OVER",
+                        "points_earned": points,
+                        "current_score": game.total_score,
+                    }
+                ),
+                200,
+            )
+
+        next_hint = game.request_hint()
+
         return (
             jsonify(
                 {
                     "status": "CORRECT",
                     "points_earned": points,
                     "current_score": game.total_score,
+                    "hint": next_hint,
                 }
             ),
             200,
@@ -117,6 +143,19 @@ def validate_attempt():
             )
         else:
             game.advance_object(is_correct=False)
+
+            if not game.get_current_object():
+                return (
+                    jsonify(
+                        {
+                            "status": "GAME_OVER",
+                            "points_earned": 0,
+                            "current_score": game.total_score,
+                        }
+                    ),
+                    200,
+                )
+
             return (
                 jsonify(
                     {
@@ -132,12 +171,12 @@ def validate_attempt():
 @esp_bp.route("/game/next-hint", methods=["GET"])
 def get_hint():
     if not game.has_started:
-        return jsonify({"status": "BLOCKED"}), 403
+        return jsonify({"status": "BLOCKED"}), 200
 
     target_object = game.get_current_object()
 
     if not target_object:
-        return jsonify({"status": "GAME_OVER"}), 400
+        return jsonify({"status": "GAME_OVER"}), 200
 
     if game.hints_requested >= len(target_object["hints"]):
         return (
